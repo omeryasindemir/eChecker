@@ -66,8 +66,92 @@ for item in veriler:
 
 # Verileri DataFrame'e çevir ve Excel dosyasına kaydet
 df = pd.DataFrame(veriler)
+
+# İstenmeyen sütunları çıkar
+istenmeyen_sutunlar = [
+    'resimAdi', 'fesihDavasiVar', 'ihaleSirasi', 'ihale115eGoreUzadi',
+    'dosyaID', 'ihaleBaslangicZamani', 'teklifSuresiBitmisMi', 'kayitID'
+]
+df = df.drop(columns=istenmeyen_sutunlar, errors='ignore')
+
+# malAciklama'dan bilgileri ayıkla
+def adres_bilgilerini_ayikla(aciklama):
+    bilgiler = {
+        'il': '',
+        'ilce': '',
+        'mahalle': '',
+        'ada': '',
+        'parsel': ''
+    }
+    
+    if isinstance(aciklama, str):
+        # İlk virgüle kadar olan kısımdan il ve ilçeyi al
+        ilk_kisim = aciklama.split(',')[:2]  # İlk iki parça
+        
+        if len(ilk_kisim) >= 1:
+            # İlk parça il
+            il_match = re.search(r'(.+?)\s+İl', ilk_kisim[0])
+            if il_match:
+                bilgiler['il'] = il_match.group(1).strip().upper()
+        
+        if len(ilk_kisim) >= 2:
+            # İkinci parça ilçe
+            ilce_match = re.search(r'(.+?)\s+İlçe', ilk_kisim[1])
+            if ilce_match:
+                bilgiler['ilce'] = ilce_match.group(1).strip().upper()
+        
+        # Mahalle, Ada ve Parsel bilgilerini bul
+        for parca in aciklama.split(','):
+            parca = parca.strip()
+            if "Mahalle/Köy" in parca:
+                mahalle_match = re.search(r'(.+?)\s+Mahalle/Köy', parca)
+                if mahalle_match:
+                    bilgiler['mahalle'] = mahalle_match.group(1).strip().upper()
+            elif "Ada" in parca:
+                ada_match = re.search(r'(\d+)\s*Ada', parca)
+                if ada_match:
+                    bilgiler['ada'] = ada_match.group(1)
+            elif "Parsel" in parca:
+                parsel_match = re.search(r'(\d+)\s*Parsel', parca)
+                if parsel_match:
+                    bilgiler['parsel'] = parsel_match.group(1)
+    
+    return bilgiler
+
+# Her bir satır için adres bilgilerini ayıkla
+adres_bilgileri = df['malAciklama'].apply(adres_bilgilerini_ayikla)
+adres_df = pd.DataFrame(adres_bilgileri.tolist())
+
+# Yeni sütunları ana DataFrame'e ekle
+df = pd.concat([df, adres_df], axis=1)
+
+# Excel dosyasına kaydet
 excel_dosya_adi = "sonuclar.xlsx"
 df.to_excel(excel_dosya_adi, index=False)
 print(f"📊 Excel dosyası oluşturuldu: {excel_dosya_adi}")
+
+# TXT dosyasına kaydet
+txt_dosya_adi = "sonuclar.txt"
+with open(txt_dosya_adi, 'w', encoding='utf-8') as f:
+    for index, row in df.iterrows():
+        f.write(f"İhale No: {row['dosyaNoTurKod']}\n")
+        f.write(f"İl: {row['il']}\n")
+        f.write(f"İlçe: {row['ilce']}\n")
+        f.write(f"Mahalle: {row['mahalle']}\n")
+        f.write(f"Ada: {row['ada']}\n")
+        f.write(f"Parsel: {row['parsel']}\n")
+        if 'yuzolcumu' in row and row['yuzolcumu'] not in ['Bilinmiyor', 'Bulunamadı', 'ZIP değil', 'İndirilemedi']:
+            f.write(f"Yüzölçümü: {row['yuzolcumu']} m²\n")
+        f.write(f"Muhammen Bedel: {row['topluKiymetBilgisi']:,.2f} TL\n")
+        f.write(f"Son Teklif: {row['sonTeklif']:,.2f} TL\n")
+        f.write(f"Teklif Sayısı: {row['teklifSayi']}\n")
+        f.write(f"İhale Bitiş Zamanı: {row['ihaleBitisZamani']}\n")
+        f.write(f"Birim İl: {row['birimIlAdi']}\n")
+        f.write(f"Birim İlçe: {row['birimIlceAdi']}\n")
+        f.write(f"Birim: {row['birimAdi']}\n")
+        f.write(f"Açıklama: {row['malAciklama']}\n")
+        f.write("-" * 80 + "\n\n")
+
+print(f"📝 TXT dosyası oluşturuldu: {txt_dosya_adi}")
 
 print("🎉 Tüm işlemler tamamlandı!")
