@@ -64,7 +64,22 @@ for item in veriler:
         print(f"❌ Hata: {kayit_id} için dosya indirilemedi! HTTP Kodu: {response.status_code}")
         item["yuzolcumu"] = "İndirilemedi"
 
-# Verileri DataFrame'e çevir ve Excel dosyasına kaydet
+# DataFrame'e çevirmeden önce sayısal değerleri düzenle
+for item in veriler:
+    # Yüzölçümü sayısal değere çevir
+    if 'yuzolcumu' in item:
+        try:
+            item['yuzolcumu'] = float(item['yuzolcumu'].replace(',', '.').replace(' m²', ''))
+        except:
+            item['yuzolcumu'] = None
+    
+    # m2 fiyatını hesapla
+    if 'yuzolcumu' in item and item['yuzolcumu'] and isinstance(item['yuzolcumu'], (int, float)):
+        item['m2_fiyati'] = item['topluKiymetBilgisi'] / item['yuzolcumu']
+    else:
+        item['m2_fiyati'] = None
+
+# Verileri DataFrame'e çevir
 df = pd.DataFrame(veriler)
 
 # İstenmeyen sütunları çıkar
@@ -125,10 +140,34 @@ adres_df = pd.DataFrame(adres_bilgileri.tolist())
 # Yeni sütunları ana DataFrame'e ekle
 df = pd.concat([df, adres_df], axis=1)
 
+# Sütun sıralamasını düzenle
+sutun_sirasi = [
+    'dosyaNoTurKod', 'il', 'ilce', 'mahalle', 'ada', 'parsel',
+    'yuzolcumu', 'topluKiymetBilgisi', 'sonTeklif', 'm2_fiyati',
+    'birimAdi', 'birimIlAdi', 'birimIlceAdi', 'teklifSayi',
+    'ihaleBitisZamani', 'malAciklama'
+]
+
+# Sadece mevcut olan sütunları seç
+mevcut_sutunlar = [col for col in sutun_sirasi if col in df.columns]
+df = df.reindex(columns=mevcut_sutunlar)
+
+# Sayısal değerleri formatla
+df['topluKiymetBilgisi'] = df['topluKiymetBilgisi'].apply(lambda x: '{:,.0f}'.format(x).replace(',', '.'))
+df['sonTeklif'] = df['sonTeklif'].apply(lambda x: '{:,.0f}'.format(x).replace(',', '.'))
+df['m2_fiyati'] = df['m2_fiyati'].apply(lambda x: '{:,.2f}'.format(x).replace(',', '.') if pd.notnull(x) else '')
+df['yuzolcumu'] = df['yuzolcumu'].apply(lambda x: '{:,.2f}'.format(x).replace(',', '.') if pd.notnull(x) else '')
+
+# İcra dairelerini kırmızı yapma
+def style_icra(row):
+    if 'İcra' in str(row['birimAdi']):
+        return ['color: red'] * len(row)
+    return [''] * len(row)
+
 # Excel dosyasına kaydet
 excel_dosya_adi = "sonuclar.xlsx"
-df.to_excel(excel_dosya_adi, index=False)
-print(f"📊 Excel dosyası oluşturuldu: {excel_dosya_adi}")
+with pd.ExcelWriter(excel_dosya_adi, engine='openpyxl') as writer:
+    df.style.apply(style_icra, axis=1).to_excel(writer, index=False)
 
 # TXT dosyasına kaydet
 txt_dosya_adi = "sonuclar.txt"
@@ -142,8 +181,10 @@ with open(txt_dosya_adi, 'w', encoding='utf-8') as f:
         f.write(f"Parsel: {row['parsel']}\n")
         if 'yuzolcumu' in row and row['yuzolcumu'] not in ['Bilinmiyor', 'Bulunamadı', 'ZIP değil', 'İndirilemedi']:
             f.write(f"Yüzölçümü: {row['yuzolcumu']} m²\n")
-        f.write(f"Muhammen Bedel: {row['topluKiymetBilgisi']:,.2f} TL\n")
-        f.write(f"Son Teklif: {row['sonTeklif']:,.2f} TL\n")
+        f.write(f"Muhammen Bedel: {row['topluKiymetBilgisi']} TL\n")
+        f.write(f"Son Teklif: {row['sonTeklif']} TL\n")
+        if pd.notnull(row['m2_fiyati']):
+            f.write(f"m² Fiyatı: {row['m2_fiyati']} TL\n")
         f.write(f"Teklif Sayısı: {row['teklifSayi']}\n")
         f.write(f"İhale Bitiş Zamanı: {row['ihaleBitisZamani']}\n")
         f.write(f"Birim İl: {row['birimIlAdi']}\n")
