@@ -44,9 +44,14 @@ for item in veriler:
                         content_xml = content_dosyasi.read().decode("utf-8", errors="ignore")
 
                     # Yüzölçümü değerini regex ile bul
-                    match = re.search(r"Yüzölçümü\s*:?\s*([\d.,]+)\s*m2?", content_xml, re.IGNORECASE)
-                    yuzolcumu = match.group(1) if match else "Bilinmiyor"
-                    print(f"📏 Yüzölçümü: {yuzolcumu} m²")
+                    match = re.search(r"Yüzölçümü\s*:?\s*([\d\s.,]+)(?:\s*m[²2])?", content_xml, re.IGNORECASE)
+                    if match:
+                        # Sayıyı temizle - boşlukları kaldır
+                        yuzolcumu = match.group(1).strip().replace(' ', '')
+                        print(f"📏 Yüzölçümü: {yuzolcumu} m²")
+                    else:
+                        yuzolcumu = "Bilinmiyor"
+                        print("⚠️ Yüzölçümü bulunamadı!")
                     
                     # Yüzölçümü değerini JSON verisine ekle
                     item["yuzolcumu"] = yuzolcumu
