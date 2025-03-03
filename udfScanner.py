@@ -42,16 +42,19 @@ for item in veriler:
                 if "content.xml" in zip_dosya.namelist():
                     with zip_dosya.open("content.xml") as content_dosyasi:
                         content_xml = content_dosyasi.read().decode("utf-8", errors="ignore")
-
-                    # Yüzölçümü değerini regex ile bul
-                    match = re.search(r"Yüzölçümü\s*:?\s*([\d\s.,]+)(?:\s*m[²2])?", content_xml, re.IGNORECASE)
-                    if match:
-                        # Sayıyı temizle - boşlukları kaldır
-                        yuzolcumu = match.group(1).strip().replace(' ', '')
-                        print(f"📏 Yüzölçümü: {yuzolcumu} m²")
-                    else:
+                        
+                        # Satır satır arama yap
                         yuzolcumu = "Bilinmiyor"
-                        print("⚠️ Yüzölçümü bulunamadı!")
+                        for line in content_xml.split('\n'):
+                            if 'Yüzölçümü' in line:
+                                match = re.search(r"Yüzölçümü[^\d]*([\d.,]+)[^\d]*m[²2]", line.strip(), re.IGNORECASE)
+                                if match:
+                                    yuzolcumu = match.group(1).strip().replace(' ', '')
+                                    print(f"📏 Yüzölçümü: {yuzolcumu} m²")
+                                    break
+                        
+                        if yuzolcumu == "Bilinmiyor":
+                            print("⚠️ Yüzölçümü bulunamadı!")
                     
                     # Yüzölçümü değerini JSON verisine ekle
                     item["yuzolcumu"] = yuzolcumu
@@ -74,8 +77,15 @@ for item in veriler:
     # Yüzölçümü sayısal değere çevir
     if 'yuzolcumu' in item:
         try:
-            item['yuzolcumu'] = float(item['yuzolcumu'].replace(',', '.').replace(' m²', ''))
+            # Önce binlik ayracı olan noktaları kaldır
+            temiz_sayi = item['yuzolcumu'].replace('.', '')
+            # Sonra virgülü noktaya çevir
+            temiz_sayi = temiz_sayi.replace(',', '.')
+            # m² ve boşlukları temizle
+            temiz_sayi = temiz_sayi.replace(' m²', '').strip()
+            item['yuzolcumu'] = float(temiz_sayi)
         except:
+            print(f"Dönüşüm hatası: {item['yuzolcumu']}")
             item['yuzolcumu'] = None
     
     # m2 fiyatını hesapla
