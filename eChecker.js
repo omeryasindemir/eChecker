@@ -138,7 +138,7 @@ async function main() {
                 .replace(/[:.]/g, '')
                 .replace('T', '_')
                 .split('Z')[0];
-            const filename = `ihale_sonuc_${timestamp}.json`;
+            const filename = `veriler.json`;
 
             await fs.writeFile(
                 filename, 

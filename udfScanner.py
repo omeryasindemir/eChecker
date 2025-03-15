@@ -167,6 +167,9 @@ sutun_sirasi = [
 mevcut_sutunlar = [col for col in sutun_sirasi if col in df.columns]
 df = df.reindex(columns=mevcut_sutunlar)
 
+# İl adına göre sırala
+df = df.sort_values('birimIlAdi')
+
 # Sayısal değerleri formatla
 df['topluKiymetBilgisi'] = df['topluKiymetBilgisi'].apply(lambda x: '{:,.0f}'.format(x).replace(',', '.'))
 df['sonTeklif'] = df['sonTeklif'].apply(lambda x: '{:,.0f}'.format(x).replace(',', '.'))
@@ -183,31 +186,5 @@ def style_icra(row):
 excel_dosya_adi = "sonuclar.xlsx"
 with pd.ExcelWriter(excel_dosya_adi, engine='openpyxl') as writer:
     df.style.apply(style_icra, axis=1).to_excel(writer, index=False)
-
-# TXT dosyasına kaydet
-txt_dosya_adi = "sonuclar.txt"
-with open(txt_dosya_adi, 'w', encoding='utf-8') as f:
-    for index, row in df.iterrows():
-        f.write(f"İhale No: {row['dosyaNoTurKod']}\n")
-        f.write(f"İl: {row['il']}\n")
-        f.write(f"İlçe: {row['ilce']}\n")
-        f.write(f"Mahalle: {row['mahalle']}\n")
-        f.write(f"Ada: {row['ada']}\n")
-        f.write(f"Parsel: {row['parsel']}\n")
-        if 'yuzolcumu' in row and row['yuzolcumu'] not in ['Bilinmiyor', 'Bulunamadı', 'ZIP değil', 'İndirilemedi']:
-            f.write(f"Yüzölçümü: {row['yuzolcumu']} m²\n")
-        f.write(f"Muhammen Bedel: {row['topluKiymetBilgisi']} TL\n")
-        f.write(f"Son Teklif: {row['sonTeklif']} TL\n")
-        if pd.notnull(row['m2_fiyati']):
-            f.write(f"m² Fiyatı: {row['m2_fiyati']} TL\n")
-        f.write(f"Teklif Sayısı: {row['teklifSayi']}\n")
-        f.write(f"İhale Bitiş Zamanı: {row['ihaleBitisZamani']}\n")
-        f.write(f"Birim İl: {row['birimIlAdi']}\n")
-        f.write(f"Birim İlçe: {row['birimIlceAdi']}\n")
-        f.write(f"Birim: {row['birimAdi']}\n")
-        f.write(f"Açıklama: {row['malAciklama']}\n")
-        f.write("-" * 80 + "\n\n")
-
-print(f"📝 TXT dosyası oluşturuldu: {txt_dosya_adi}")
 
 print("🎉 Tüm işlemler tamamlandı!")
