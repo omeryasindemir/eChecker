@@ -1,34 +1,14 @@
 const axios = require('axios');
 const fs = require('fs').promises;
 
-function getDateRange() {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0: Pazar, 1: Pazartesi, ..., 6: Cumartesi
-    
-    let startDate, endDate;
-    
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Hafta içi ise
-        startDate = new Date(today);
-        endDate = new Date(today);
-        // Yarın başlayıp Cuma'ya kadar
-        startDate.setDate(today.getDate() + 1);
-        endDate.setDate(today.getDate() + (5 - dayOfWeek));
-    } else { // Hafta sonu ise
-        startDate = new Date(today);
-        endDate = new Date(today);
-        // Önümüzdeki haftanın Pazartesi'den Cuma'sına kadar
-        startDate.setDate(today.getDate() + (8 - dayOfWeek)); // Pazartesi
-        endDate.setDate(startDate.getDate() + 4); // Cuma
-    }
-    
-    return {
-        startDate: startDate.toLocaleDateString('tr-TR').replace(/\./g, '/'),
-        endDate: endDate.toLocaleDateString('tr-TR').replace(/\./g, '/')
-    };
+function getTomorrowDate() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toLocaleDateString('tr-TR').replace(/\./g, '/');
 }
 
 function createSearchData(pageNumber = 1) {
-    const dateRange = getDateRange();
+    const tomorrow = getTomorrowDate();
     
     return {
         'kategori': '1',
@@ -46,8 +26,8 @@ function createSearchData(pageNumber = 1) {
         'tasitModelBitis': '',
         'tasinmazIl': '',
         'tasinmazIlce': '',
-        'ihaleBaslangicZamani': dateRange.startDate,
-        'ihaleBitisZamani': dateRange.endDate,
+        'ihaleBaslangicZamani': tomorrow,
+        'ihaleBitisZamani': tomorrow,
         'isPilotMu': 'false',
         'isPazarlikUsulu': 'false',
         'pageNumber': pageNumber.toString()
